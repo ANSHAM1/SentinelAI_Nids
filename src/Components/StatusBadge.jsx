@@ -3,7 +3,7 @@ import { ShieldX, Zap, CheckCircle } from 'lucide-react';
 
 const StatusBadge = ({ status, minerActivity, threats }) => {
   const getStatusInfo = () => {
-    if (status === 'threat' || threats.length > 0) {
+    if (status === 'threat' || threats?.length > 0) {
       return { color: 'bg-red-500', icon: ShieldX, text: 'THREAT DETECTED' };
     }
     if (status === 'miner' || minerActivity) {

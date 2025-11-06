@@ -1,132 +1,169 @@
-import React from 'react';
-import { 
-  Wifi, Globe, Server, Activity, Shield, Cpu, MapPin,
-  Download, Upload, AlertTriangle, Zap, Eye, EyeOff, Settings
-} from 'lucide-react';
-import StatusBadge from './StatusBadge';
+import React from "react";
+import {
+  Globe,
+  Server,
+  Wifi,
+  Cpu,
+  Activity,
+  Download,
+  Upload,
+  MemoryStick,
+  Clock,
+  Network,
+  Settings,
+  Zap,
+  List,
+} from "lucide-react";
 
-const NetworkCard = ({ network, onToggle, onQuarantine, onDetails }) => {
-  const isOnline = network.enabled && network.lastSeen > new Date(Date.now() - 60000);
-  
+const NetworkCard = ({ network, onDetails }) => {
+  if (!network) return null;
+
+  const {
+    id,
+    name,
+    status,
+    ip_info,
+    received_bytes,
+    transmitted_bytes,
+    bandwidth,
+    sockets,
+    last_seen,
+    cpu_usage,
+    total_memory,
+    used_memory,
+  } = network;
+
+  // Helpers
+  const formatBytes = (bytes) => {
+    if (!bytes || bytes <= 0) return "0 B";
+    const units = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+  };
+
+  const formatTime = (time) =>
+    new Date(time).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+
+  const memoryUsagePercent = total_memory
+    ? ((used_memory / total_memory) * 100).toFixed(1)
+    : "N/A";
+
+  const typeIcon = () => {
+    const lname = name.toLowerCase();
+    if (lname.includes("wi") || lname.includes("wlan")) return <Wifi size={20} />;
+    if (lname.includes("eth")) return <Server size={20} />;
+    return <Globe size={20} />;
+  };
+
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-lg border-l-4 p-6 transition-all duration-300 hover:shadow-xl ${
-      network.status === 'threat' ? 'border-red-500' : 
-      network.status === 'miner' ? 'border-yellow-500' : 'border-green-500'
-    }`}>
+    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-2xl transition-all duration-300">
       {/* Header */}
-      <div className="flex justify-between items-start mb-4">
+      <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${isOnline ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
-            {network.type === 'WiFi' ? <Wifi size={20} /> : 
-             network.type === 'Ethernet' ? <Server size={20} /> : <Globe size={20} />}
+          <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg text-blue-600 dark:text-blue-300">
+            {typeIcon()}
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white">{network.name}</h3>
-            <p className="text-sm text-gray-500">{network.ssid}</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {name}
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">ID: {id}</p>
           </div>
         </div>
-        <StatusBadge status={network.status} minerActivity={network.minerActivity} threats={network.threats} />
+        <div
+          className={`px-3 py-1 text-sm rounded-full ${
+            status === "active"
+              ? "bg-green-100 text-green-700"
+              : "bg-gray-100 text-gray-600"
+          }`}
+        >
+          {status}
+        </div>
       </div>
 
-      {/* Network Info */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className="flex items-center gap-2 text-sm">
-          <Activity size={16} className="text-gray-400" />
-          <span className="text-gray-600 dark:text-gray-300">Signal: {network.signal}%</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Shield size={16} className="text-gray-400" />
-          <span className="text-gray-600 dark:text-gray-300">{network.security}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Cpu size={16} className="text-gray-400" />
-          <span className="text-gray-600 dark:text-gray-300">{network.devices} devices</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <MapPin size={16} className="text-gray-400" />
-          <span className="text-gray-600 dark:text-gray-300">{network.location}</span>
+      {/* IP Info */}
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
+          <Network size={16} /> Network Info
+        </h3>
+        <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <p>IPv4: {ip_info?.ipv4 ?? "N/A"}</p>
+          <p>IPv6: {ip_info?.ipv6 ?? "N/A"}</p>
+          <p>MAC: {ip_info?.mac ?? "N/A"}</p>
+          <p>Interface: {ip_info?.interface ?? "N/A"}</p>
         </div>
       </div>
 
       {/* Bandwidth */}
-      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 mb-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Bandwidth</span>
-          <span className="text-xs text-gray-500">{isOnline ? 'Live' : 'Offline'}</span>
-        </div>
-        <div className="flex justify-between text-sm">
-          <div className="flex items-center gap-1 text-green-600">
-            <Download size={14} />
-            {network.bandwidth.download.toFixed(1)} Mbps
-          </div>
-          <div className="flex items-center gap-1 text-blue-600">
-            <Upload size={14} />
-            {network.bandwidth.upload.toFixed(1)} Mbps
-          </div>
+      <div className="mb-4 bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
+          <Activity size={16} /> Bandwidth
+        </h3>
+        <div className="grid grid-cols-2 text-sm">
+          <p className="flex items-center gap-1 text-green-600 dark:text-green-400">
+            <Download size={14} /> {bandwidth?.download.toFixed(2)} Mbps
+          </p>
+          <p className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+            <Upload size={14} /> {bandwidth?.upload.toFixed(2)} Mbps
+          </p>
+          <p>Received: {formatBytes(received_bytes)}</p>
+          <p>Transmitted: {formatBytes(transmitted_bytes)}</p>
         </div>
       </div>
 
-      {/* Threats Display */}
-      {network.threats.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle size={16} className="text-red-500" />
-            <span className="text-sm font-medium text-red-700">Active Threats</span>
-          </div>
-          {network.threats.map((threat, idx) => (
-            <div key={idx} className="text-xs text-red-600 mb-1">• {threat}</div>
-          ))}
+      {/* CPU / Memory */}
+      <div className="mb-4 bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2">
+          <Cpu size={16} /> System Stats
+        </h3>
+        <div className="grid grid-cols-2 text-sm text-gray-600 dark:text-gray-400">
+          <p>CPU Usage: {cpu_usage.toFixed(1)}%</p>
+          <p>
+            Memory: {formatBytes(used_memory)} / {formatBytes(total_memory)} (
+            {memoryUsagePercent}%)
+          </p>
+          <p className="col-span-2 text-xs text-gray-500 mt-1">
+            Last seen: {formatTime(last_seen)}
+          </p>
         </div>
-      )}
+      </div>
 
-      {/* Miner Activity */}
-      {network.minerActivity && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-          <div className="flex items-center gap-2">
-            <Zap size={16} className="text-yellow-500" />
-            <span className="text-sm font-medium text-yellow-700">Cryptocurrency Mining Detected</span>
+      {/* Sockets */}
+      <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 mb-4">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+          <List size={16} /> Active Sockets ({sockets?.length || 0})
+        </h3>
+        {sockets && sockets.length > 0 ? (
+          <div className="max-h-32 overflow-y-auto border-t border-gray-200 dark:border-gray-600 pt-2">
+            {sockets.map((sock, i) => (
+              <div
+                key={i}
+                className="text-xs flex justify-between text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-600 py-1"
+              >
+                <span>{sock.protocol}</span>
+                <span>{sock.local_addr}</span>
+                <span>{sock.remote_addr}</span>
+                <span>{sock.state ?? "N/A"}</span>
+              </div>
+            ))}
           </div>
-          <p className="text-xs text-yellow-600 mt-1">Unusual CPU patterns and network requests detected</p>
-        </div>
-      )}
-
-      {/* Controls */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => onToggle(network.id)}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
-            network.enabled 
-              ? 'bg-red-100 text-red-700 hover:bg-red-200' 
-              : 'bg-green-100 text-green-700 hover:bg-green-200'
-          }`}
-        >
-          {network.enabled ? (
-            <>
-              <EyeOff size={16} className="inline mr-1" />
-              Disable
-            </>
-          ) : (
-            <>
-              <Eye size={16} className="inline mr-1" />
-              Enable
-            </>
-          )}
-        </button>
-        
-        {(network.status === 'threat' || network.minerActivity) && (
-          <button
-            onClick={() => onQuarantine(network.id)}
-            className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg font-medium text-sm hover:bg-orange-200 transition-colors"
-          >
-            Quarantine
-          </button>
+        ) : (
+          <p className="text-xs text-gray-500">No active sockets</p>
         )}
-        
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end">
         <button
           onClick={() => onDetails(network.id)}
-          className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg font-medium text-sm hover:bg-blue-200 transition-colors"
+          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg flex items-center gap-2 transition"
         >
-          <Settings size={16} className="inline" />
+          <Settings size={16} />
+          Details
         </button>
       </div>
     </div>

@@ -1,7 +1,6 @@
-import React from 'react';
-import { Shield } from 'lucide-react';
+import { Shield } from "lucide-react";
 
-const Header = ({ darkMode, setDarkMode, autoRefresh, setAutoRefresh, isScanning }) => {
+const Header = ({ autoRefresh, setAutoRefresh, isScanning }) => {
   return (
     <header className="bg-white dark:bg-gray-800 shadow-lg border-b">
       <div className="max-w-7xl mx-auto px-6 py-4">
@@ -11,11 +10,15 @@ const Header = ({ darkMode, setDarkMode, autoRefresh, setAutoRefresh, isScanning
               <Shield className="text-white" size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">SentinelAI</h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Network Security Dashboard</p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                SentinelAI
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Network Security Dashboard
+              </p>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <input
@@ -26,21 +29,20 @@ const Header = ({ darkMode, setDarkMode, autoRefresh, setAutoRefresh, isScanning
               />
               Auto-refresh
             </label>
-            
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+
+            <div
+              className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+                isScanning
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-green-100 text-green-800"
+              }`}
             >
-              {darkMode ? '☀️' : '🌙'}
-            </button>
-            
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
-              isScanning ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-            }`}>
-              <div className={`w-2 h-2 rounded-full ${
-                isScanning ? 'bg-blue-500 animate-pulse' : 'bg-green-500'
-              }`} />
-              {isScanning ? 'Scanning...' : 'Monitoring'}
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  isScanning ? "bg-blue-500 animate-pulse" : "bg-green-500"
+                }`}
+              />
+              {isScanning ? "Scanning..." : "Monitoring"}
             </div>
           </div>
         </div>

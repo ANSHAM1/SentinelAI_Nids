@@ -1,90 +1,159 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use chrono::{DateTime, Utc};
-// 'Addr' has been removed from this line as it was unused.
+use sysinfo::{System, Networks};
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
-use rand::Rng;
+use netstat2::{get_sockets_info, AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo};
 use serde::Serialize;
+use std::collections::HashMap;
+use std::net::IpAddr;
 
 #[derive(Debug, Serialize)]
 struct Bandwidth {
-    download: f32,
-    upload: f32,
+    download: f64, // Mbps
+    upload: f64,   // Mbps
 }
 
 #[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct DetailedNetworkInfo {
+struct IPInfo {
+    ipv4: Option<String>,
+    ipv6: Option<String>,
+    mac: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct SocketInfo {
+    local_addr: String,
+    remote_addr: Option<String>,
+    protocol: String,
+    pid: Option<u32>,
+    state: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct NetworkInfo {
     id: String,
     name: String,
-    ssid: String,
-    #[serde(rename = "type")]
-    network_type: String,
     status: String,
-    enabled: bool,
-    signal: u8,
-    security: String,
-    devices: u8,
+    ip_info: IPInfo,
+    received_bytes: u64,
+    transmitted_bytes: u64,
     bandwidth: Bandwidth,
-    location: String,
+    sockets: Vec<SocketInfo>,
     last_seen: DateTime<Utc>,
-    threats: Vec<String>,
-    miner_activity: bool,
+    cpu_usage: f32,
+    total_memory: u64,
+    used_memory: u64,
 }
 
 #[tauri::command]
-async fn get_network_interfaces() -> Vec<DetailedNetworkInfo> {
+async fn get_networks() -> Vec<NetworkInfo> {
+    // Initialize system info
+    let mut sys = System::new_all();
+    sys.refresh_all();
+
+    // Fetch network and socket info
+    let networks = Networks::new_with_refreshed_list();
+    let interfaces = NetworkInterface::show().unwrap_or_default();
+
+    let iface_map: HashMap<String, NetworkInterface> = interfaces
+        .into_iter()
+        .map(|iface| (iface.name.clone(), iface))
+        .collect();
+
+    let sockets = get_sockets_info(
+        AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6,
+        ProtocolFlags::TCP | ProtocolFlags::UDP,
+    )
+    .unwrap_or_default();
+
+    let cpu_usage = sys.global_cpu_usage();
+    let total_mem = sys.total_memory();
+    let used_mem = sys.used_memory();
+
     let mut results = Vec::new();
-    // `thread_rng` is still the correct function to get the generator.
-    let mut rng = rand::rng();
 
-    if let Ok(interfaces) = NetworkInterface::show() {
-        for (index, itf) in interfaces.iter().enumerate() {
-            // --- Start of Placeholder Data Generation ---
-            let is_wifi = itf.name.to_lowercase().contains("wi-fi") || itf.name.to_lowercase().contains("wlan");
-            
-            // Replaced deprecated `gen_bool(0.8)` with modern `gen_ratio(8, 10)`.
-            let is_enabled = rng.random_ratio(8, 10); // 80% chance
-            
-            let status = if is_enabled { "connected" } else { "disconnected" };
-            let threats = if is_enabled && !is_wifi {
-                vec![]
+    for (index, (name, data)) in networks.iter().enumerate() {
+        let rx_bytes = data.total_received();
+        let tx_bytes = data.total_transmitted();
+
+        // Map IP and MAC info
+        let ip_info = if let Some(iface) = iface_map.get(name) {
+            let ipv4 = iface
+                .addr
+                .iter()
+                .find(|addr| matches!(addr.ip(), IpAddr::V4(_)))
+                .map(|addr| addr.ip().to_string());
+
+            let ipv6 = iface
+                .addr
+                .iter()
+                .find(|addr| matches!(addr.ip(), IpAddr::V6(_)))
+                .map(|addr| addr.ip().to_string());
+
+            IPInfo {
+                ipv4,
+                ipv6,
+                mac: iface.mac_addr.clone(), // ✅ clone to avoid move
+            }
+        } else {
+            IPInfo {
+                ipv4: None,
+                ipv6: None,
+                mac: None,
+            }
+        };
+
+        // Collect socket info
+        let related_sockets: Vec<SocketInfo> = sockets
+            .iter()
+            .filter_map(|s| match &s.protocol_socket_info {
+                ProtocolSocketInfo::Tcp(tcp) => Some(SocketInfo {
+                    local_addr: tcp.local_addr.to_string(),
+                    remote_addr: Some(tcp.remote_addr.to_string()),
+                    protocol: "TCP".into(),
+                    pid: s.associated_pids.first().copied(),
+                    state: Some(format!("{:?}", tcp.state)),
+                }),
+                ProtocolSocketInfo::Udp(udp) => Some(SocketInfo {
+                    local_addr: udp.local_addr.to_string(),
+                    remote_addr: None,
+                    protocol: "UDP".into(),
+                    pid: s.associated_pids.first().copied(),
+                    state: None,
+                }),
+            })
+            .collect();
+
+        results.push(NetworkInfo {
+            id: format!("iface_{index}"),
+            name: name.to_string(),
+            status: if rx_bytes + tx_bytes > 0 {
+                "active".into()
             } else {
-                vec!["Unsecured Network".to_string()]
-            };
-            // --- End of Placeholder Data Generation ---
-
-            let network_info = DetailedNetworkInfo {
-                id: format!("net_{:03}", index),
-                name: itf.name.clone(),
-                ssid: if is_wifi { "MyHomeWiFi".to_string() } else { "N/A".to_string() },
-                network_type: if is_wifi { "WiFi".to_string() } else { "Ethernet".to_string() },
-                status: status.to_string(),
-                enabled: is_enabled,
-                // `random_range` is correct here; the warning was likely informational.
-                signal: if is_wifi { rng.random_range(30..95) } else { 100 },
-                security: if is_wifi { "WPA2".to_string() } else { "N/A".to_string() },
-                devices: if is_enabled { rng.random_range(1..10) } else { 0 },
-                bandwidth: Bandwidth {
-                    download: rng.random_range(5.0..100.0),
-                    upload: rng.random_range(1.0..50.0),
-                },
-                location: "Bharthia, IN".to_string(),
-                last_seen: Utc::now(),
-                threats,
-                // Replaced deprecated `gen_bool(0.05)` with `gen_ratio(1, 20)`.
-                miner_activity: rng.random_ratio(1, 20), // 5% chance
-            };
-            results.push(network_info);
-        }
+                "idle".into()
+            },
+            ip_info,
+            received_bytes: rx_bytes,
+            transmitted_bytes: tx_bytes,
+            bandwidth: Bandwidth {
+                download: (rx_bytes as f64 * 8.0) / 1_000_000.0, // bits → Mbps
+                upload: (tx_bytes as f64 * 8.0) / 1_000_000.0,
+            },
+            sockets: related_sockets,
+            last_seen: Utc::now(),
+            cpu_usage,
+            total_memory: total_mem,
+            used_memory: used_mem,
+        });
     }
+
     results
 }
 
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_network_interfaces])
-        // The path is now directly under `tauri`, not `tauri::api`
+        .invoke_handler(tauri::generate_handler![get_networks])
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("❌ Error running SentinelAI backend");
 }

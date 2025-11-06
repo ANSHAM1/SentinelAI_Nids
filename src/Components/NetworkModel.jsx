@@ -1,6 +1,6 @@
 import React from 'react';
 
-const NetworkModal = ({ network, isOpen, onClose, onToggle }) => {
+const NetworkModel = ({ network, isOpen, onClose, onToggle }) => {
   if (!isOpen || !network) return null;
 
   return (
@@ -64,4 +64,4 @@ const NetworkModal = ({ network, isOpen, onClose, onToggle }) => {
   );
 };
 
-export default NetworkModal;
+export default NetworkModel;
