@@ -1,6 +1,6 @@
 import { Shield } from "lucide-react";
 
-const Header = ({ autoRefresh, setAutoRefresh, isScanning }) => {
+const Header = ({ isScanning }) => {
   return (
     <header className="bg-white dark:bg-gray-800 shadow-lg border-b">
       <div className="max-w-7xl mx-auto px-6 py-4">
@@ -20,16 +20,6 @@ const Header = ({ autoRefresh, setAutoRefresh, isScanning }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <input
-                type="checkbox"
-                checked={autoRefresh}
-                onChange={(e) => setAutoRefresh(e.target.checked)}
-                className="rounded"
-              />
-              Auto-refresh
-            </label>
-
             <div
               className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
                 isScanning
