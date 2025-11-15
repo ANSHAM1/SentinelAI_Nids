@@ -122,16 +122,16 @@ def load_models():
         models["xgb"] = joblib.load(base/"XGBoost"/"sentinel_xgboost_multiclass.pkl")
         models["xgb_scaler"] = joblib.load(base/"XGBoost"/"scaler.pkl")
         models["xgb_encoder"] = joblib.load(base/"XGBoost"/"label_encoder.pkl")
-        print("[Worker] XGBoost loaded.")
+        # print("[Worker] XGBoost loaded.")
     except Exception as e:
-        print("[Worker] XGB failed:", e)
+        # print("[Worker] XGB failed:", e)
         models["xgb"] = None
 
     # ---------- LSTM ----------
     try:
         models["lstm_scaler"] = joblib.load(base/"LSTM"/"lstm_scaler.pkl")
         models["lstm_threshold"] = float(np.load(base/"LSTM"/"lstm_threshold.npy"))
-        print("[Worker] LSTM scaler + threshold loaded.")
+        # print("[Worker] LSTM scaler + threshold loaded.")
     except:
         models["lstm_scaler"] = None
         models["lstm_threshold"] = None
@@ -139,7 +139,7 @@ def load_models():
     # ONNX preferred
     if ort and (base/"LSTM"/"lstm_autoencoder.onnx").exists():
         models["lstm_onnx"] = ort.InferenceSession(str(base/"LSTM"/"lstm_autoencoder.onnx"))
-        print("[Worker] LSTM ONNX loaded.")
+        # print("[Worker] LSTM ONNX loaded.")
     else:
         models["lstm_onnx"] = None
 
@@ -174,7 +174,6 @@ def predict_xgb(models, vec78):
     }
 
 
-
 # ---------------------------------------------------------------------
 # LSTM (ONNX)
 # ---------------------------------------------------------------------
@@ -202,17 +201,15 @@ def predict_lstm(models, vec77):
     err = float(np.mean((v3 - out)**2))
 
     return {
-        "error": err,
+        "label": "unknown" if err > threshold else "benign",
         "is_anomaly": err > threshold
     }
-
-
 
 # ---------------------------------------------------------------------
 # MAIN NFSTREAM LOOP
 # ---------------------------------------------------------------------
 def run_streamer(iface, models):
-    print(json.dumps({"info": "worker-starting", "iface": iface}), flush=True)
+    # print(json.dumps({"info": "worker-starting", "iface": iface}), flush=True)
 
     streamer = NFStreamer(
         source=iface,
@@ -229,25 +226,25 @@ def run_streamer(iface, models):
             vec77, vec78 = make_feature_vectors(nf)
 
             # XGB first
-            xgb_out = predict_xgb(models, vec78)
+            out = predict_xgb(models, vec78)
 
             # fallback to LSTM if benign
-            if xgb_out and not xgb_out["is_anomaly"]:
+            if out and not out["is_anomaly"]:
                 lstm_out = predict_lstm(models, vec77)
-                is_anom = lstm_out["is_anomaly"] if lstm_out else False
-            else:
-                is_anom = True
+                out = lstm_out if lstm_out["is_anomaly"] else out
 
             out = {
                 "iface": iface,
-                "anomaly": bool(is_anom)
+                "label": out["label"],
+                "is_anomaly": out["is_anomaly"]
             }
 
             print(json.dumps(out), flush=True)
 
         except Exception:
-            traceback.print_exc(file=sys.stdout)
-            print(json.dumps({"error": "flow-processing-failed"}), flush=True)
+            pass
+            # traceback.print_exc(file=sys.stdout)
+            # print(json.dumps({"error": "flow-processing-failed"}), flush=True)
 
 
 def main():

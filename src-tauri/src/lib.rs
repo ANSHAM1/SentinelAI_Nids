@@ -35,7 +35,6 @@ fn get_interfaces(dir: &Path, runner: &PythonRunner) -> HashMap<String, String> 
     let output = match runner.run(script) {
         Some(out) => out,
         None => {
-            println!("failed to load interfaces");
             return HashMap::new();
         }
     };
@@ -65,7 +64,6 @@ fn spawn_worker(
 
     if let Some(stdout) = child.stdout.take() {
         let handle = app_handle.clone();
-
         tauri::async_runtime::spawn_blocking(move || {
             let reader = BufReader::new(stdout);
             for line in reader.lines().flatten() {
@@ -86,19 +84,13 @@ fn spawn_worker(
     Some(child)
 }
 
-pub fn start_monitoring(
-    app: AppHandle,
-    state: Arc<AppState>,
-    dir: PathBuf,
-    runner: Arc<PythonRunner>,
-) {
+fn start_monitoring(app: AppHandle, state: Arc<AppState>, dir: PathBuf, runner: Arc<PythonRunner>) {
     thread::spawn(move || {
         let mut previous: Vec<String> = vec![];
+        let mut first_emit = true;
 
         loop {
-            //
-            // ---- 1. Collect latest network info ----
-            //
+            // ----  Collect latest network info ----
             let networks = collect_networks();
 
             let current_ips: Vec<String> = networks
@@ -106,29 +98,21 @@ pub fn start_monitoring(
                 .filter_map(|net| net.ip_info.ipv4.clone())
                 .collect();
 
-            //
-            // ---- 2. Read iface → name map ----
-            //
+            // ---- Read iface → name map ----
             let iface_map = state.iface_map.lock().unwrap();
 
-            //
-            // ---- 3. Start workers for NEW interfaces ----
-            //
+            // ---- Start workers for NEW interfaces ----
             for ipv4 in &current_ips {
                 if !previous.contains(ipv4) {
                     if let Some(iface_name) = iface_map.get(ipv4) {
                         if let Some(child) = spawn_worker(&app, iface_name, &dir, runner.clone()) {
                             state.workers.lock().unwrap().insert(ipv4.clone(), child);
                         }
-                    } else {
-                        println!("No interface name found for IPv4 '{}'", ipv4);
                     }
                 }
             }
 
-            //
-            // ---- 4. Kill workers for REMOVED interfaces ----
-            //
+            // ---- Kill workers for REMOVED interfaces ----
             {
                 let mut workers = state.workers.lock().unwrap();
 
@@ -137,34 +121,76 @@ pub fn start_monitoring(
                         if let Some(mut child) = workers.remove(old_ip) {
                             let _ = child.kill();
                             let _ = child.wait();
-                            println!("Stopped worker for {}", old_ip);
                         }
                     }
                 }
             }
 
-            //
-            // ---- 5. Update shared network state ----
-            //
+            // ---- Update shared network state ----
             {
                 let mut lock = state.networks.write().unwrap();
-                *lock = networks.clone();
+
+                for new in &networks {
+                    // Key = IPv4 address
+                    let ipv4 = match &new.ip_info.ipv4 {
+                        Some(v) => v.clone(),
+                        None => continue,
+                    };
+
+                    if let Some(existing) = lock
+                        .iter_mut()
+                        .find(|n| n.ip_info.ipv4 == Some(ipv4.clone()))
+                    {
+                        // -------- Preserve anomaly state --------
+                        let anomaly = existing.anomaly.clone();
+
+                        // -------- Update all live fields --------
+                        existing.id = existing.id.clone();
+                        existing.name = new.name.clone();
+                        existing.status = new.status.clone();
+                        existing.ip_info = new.ip_info.clone();
+                        existing.bandwidth = new.bandwidth.clone();
+                        existing.received_bytes = new.received_bytes;
+                        existing.transmitted_bytes = new.transmitted_bytes;
+                        existing.active_ports = new.active_ports.clone();
+                        existing.last_seen = new.last_seen;
+                        existing.cpu_usage = new.cpu_usage;
+
+                        // -------- Restore anomaly detection --------
+                        existing.anomaly = anomaly;
+                    } else {
+                        // -------- Add new network --------
+                        lock.push(new.clone());
+                    }
+                }
+
+                // -------- Remove networks no longer present --------
+                let new_ipv4s: Vec<String> = networks
+                    .iter()
+                    .filter_map(|n| n.ip_info.ipv4.clone())
+                    .collect();
+
+                lock.retain(|n| {
+                    if let Some(ip) = &n.ip_info.ipv4 {
+                        new_ipv4s.contains(ip)
+                    } else {
+                        false
+                    }
+                });
             }
 
-            //
-            // ---- 6. Send frontend event ----
-            //
-            let _ = app.emit("network_update", networks);
+            // ---- Send frontend event ----
+            if first_emit {
+                let nets = state.networks.read().unwrap().clone();
+                let _ = app.emit("network_update", nets);
+                first_emit = false;
+            }
 
-            //
-            // ---- 7. update previous list for next loop ----
-            //
+            // ---- update previous list for next loop ----
             previous = current_ips.clone();
 
-            //
-            // ---- 8. Sleep for next cycle ----
-            //
-            thread::sleep(Duration::from_secs(5));
+            // ---- Sleep for next cycle ----
+            thread::sleep(Duration::from_secs(10));
         }
     });
 }
@@ -177,9 +203,12 @@ pub fn run() {
         .manage(app_state.clone())
         .setup(move |app| {
             // ---- Prepare Python directory path ----
-            let python_dir = app.path().resource_dir().unwrap().join("resources").join("embedded-python");
-
-            println!("Python Dir: {:?}", python_dir);
+            let python_dir = app
+                .path()
+                .resource_dir()
+                .unwrap()
+                .join("resources")
+                .join("embedded-python");
 
             // ---- Python Runner ----
             let runner = Arc::new(PythonRunner::new(&python_dir));
@@ -198,9 +227,6 @@ pub fn run() {
 
             if iface_map.is_empty() {
                 println!("❌ ERROR: Could not load interface map. Workers will not start.");
-            } else {
-                println!("✅ NFStream interface map loaded:");
-                println!("{:#?}", iface_map);
             }
 
             // ---- Save iface_map into AppState ----
@@ -210,7 +236,9 @@ pub fn run() {
             }
 
             // ---- Setup event listener for "get_anomaly" ----\
-            let app_handle = app.handle().clone();
+            // let app_handle = app.handle().clone();
+            let app_handle = app.app_handle();
+
             let emit_handle = app_handle.clone();
 
             let state_clone = Arc::clone(&app_state);
@@ -222,10 +250,14 @@ pub fn run() {
                     return;
                 }
 
-                // Parse JSON from Python worker
-                let msg: serde_json::Value = match serde_json::from_str(payload) {
-                    Ok(v) => v,
-                    Err(_) => return,
+                let raw = payload;
+                let first: serde_json::Value = serde_json::from_str(raw).unwrap();
+
+                // If the first layer is a string → parse inner
+                let msg: serde_json::Value = if first.is_string() {
+                    serde_json::from_str(first.as_str().unwrap()).unwrap()
+                } else {
+                    first
                 };
 
                 let iface_name = match msg.get("iface").and_then(|v| v.as_str()) {
@@ -233,22 +265,45 @@ pub fn run() {
                     None => return,
                 };
 
-                let is_anomaly = match msg.get("anomaly").and_then(|v| v.as_bool()) {
-                    Some(x) => x,
-                    None => return,
-                };
+                let label = msg
+                    .get("label")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown")
+                    .to_string();
+
+                let is_anomaly = msg
+                    .get("is_anomaly")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+
+                let iface_raw = msg["iface"].as_str().unwrap_or("");
+
+                // Reverse lookup: device_name → ipv4
+                let iface_map = state_clone.iface_map.lock().unwrap();
+                let ipv4 = iface_map.iter().find_map(|(ip, name)| {
+                    if name == iface_raw {
+                        Some(ip.clone())
+                    } else {
+                        None
+                    }
+                });
+
+                if ipv4.is_none() {
+                    eprintln!("Could not map iface '{}' to an IPv4", iface_raw);
+                    return;
+                }
+
+                let ipv4 = ipv4.unwrap();
 
                 {
                     let mut networks = state_clone.networks.write().unwrap();
 
                     for net in networks.iter_mut() {
-                        if net.name == iface_name {
+                        if net.ip_info.ipv4.as_ref() == Some(&ipv4) {
+                            net.id = iface_name.to_string();
                             net.anomaly.is_anomalous = is_anomaly;
-                            net.anomaly.anomaly_type = if is_anomaly {
-                                Some("ANOMALY".into())
-                            } else {
-                                Some("BENIGN".into())
-                            };
+                            net.anomaly.anomaly_type = Some(label.to_uppercase());
+
                             net.last_seen = Utc::now();
                         }
                     }
@@ -261,7 +316,7 @@ pub fn run() {
 
             // ---- Start continuous monitoring ----
             start_monitoring(
-                app_handle,
+                app_handle.clone(),
                 Arc::clone(&app_state),
                 python_dir,
                 runner.clone(),

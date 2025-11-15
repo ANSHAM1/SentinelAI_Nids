@@ -1,4 +1,4 @@
-from scapy.all import get_if_list, get_if_addr, get_if_hwaddr
+from scapy.all import get_if_list, get_if_addr
 import psutil
 import json
 
