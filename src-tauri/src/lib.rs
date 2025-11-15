@@ -177,7 +177,7 @@ pub fn run() {
         .manage(app_state.clone())
         .setup(move |app| {
             // ---- Prepare Python directory path ----
-            let python_dir = app.path().resource_dir().unwrap().join("embedded-python");
+            let python_dir = app.path().resource_dir().unwrap().join("resources").join("embedded-python");
 
             println!("Python Dir: {:?}", python_dir);
 
