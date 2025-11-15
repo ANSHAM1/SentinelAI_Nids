@@ -8,14 +8,10 @@ import Header from "./Header";
 import ThreatSummary from "./ThreatSummary";
 import NetworkCard from "./NetworkCard";
 import RecentActivity from "./RecentActivity";
-import QuickActions from "./QuickActions";
-import NetworkModel from "./NetworkModel";
 
 const Dashboard = () => {
   const [networks, setNetworks] = useState([]);
   const [isScanning, setIsScanning] = useState(false);
-  const [selectedNetwork, setSelectedNetwork] = useState(null);
-  const [showModal, setShowModal] = useState(false);
 
   const initializeNetworks = async () => {
     try {
@@ -45,33 +41,6 @@ const Dashboard = () => {
       unlistenPromise.then((unlisten) => unlisten());
     };
   }, []);
-
-  // useEffect(() => {
-  //   let intervalId = null;
-  //   let isFetching = false;
-
-  //   async function fetchNetworks() {
-  //     if (isFetching) return;
-  //     isFetching = true;
-  //     try {
-  //       const updatedNetworks = await invoke("get_networks");
-  //       setNetworks(updatedNetworks);
-  //     } catch (error) {
-  //       console.error("Failed to fetch networks:", error);
-  //     } finally {
-  //       isFetching = false;
-  //     }
-  //   }
-
-  //   if (autoRefresh) {
-  //     fetchNetworks();
-  //     intervalId = setInterval(fetchNetworks, 5000);
-  //   }
-
-  //   return () => {
-  //     if (intervalId) clearInterval(intervalId);
-  //   };
-  // }, [autoRefresh]);
 
   return (
     <div className={"min-h-screen bg-gray-900"}>
@@ -123,7 +92,6 @@ const Dashboard = () => {
                   <NetworkCard
                     key={network.id}
                     network={network}
-                    // onDetails={handleNetworkDetails}
                   />
                 ))}
               </div>
@@ -131,8 +99,8 @@ const Dashboard = () => {
           </div>
 
           <div className="space-y-6">
-            {/* <RecentActivity networks={networks} />
-            <QuickActions
+            <RecentActivity networks={networks} />
+            {/* <QuickActions
               onScanAll={handleScanAll}
               onEmergencyShutdown={handleEmergencyShutdown}
               onExportReport={handleExportReport}
@@ -141,13 +109,6 @@ const Dashboard = () => {
           </div>
         </div>
       </main>
-
-      {/* <NetworkModel
-        network={getModalNetworkData()}
-        isOpen={showModal}
-        onClose={handleCloseModal}
-        onToggle={handleToggleNetwork}
-      /> */}
     </div>
   );
 };
