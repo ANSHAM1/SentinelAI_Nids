@@ -3,8 +3,12 @@ import { Server, CheckCircle, ShieldAlert, Zap } from "lucide-react";
 const ThreatSummary = ({ networks }) => {
   const totalNetworks = networks.length;
   const secureNetworks = networks.filter((n) => !n.anomaly.isAnomalous).length;
-  const threatenedNetworks = networks.filter((n) => n.anomaly.isAnomalous).length;
-  const totalCpuUsage = networks.reduce((sum, n) => sum + (n.cpuUsage || 0), 0);
+  const threatenedNetworks = networks.filter(
+    (n) => n.anomaly.isAnomalous
+  ).length;
+  const totalCpuUsage = Number(
+    networks.reduce((sum, n) => sum + (n.cpuUsage || 0), 0).toFixed(2)
+  );
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -37,7 +41,9 @@ const ThreatSummary = ({ networks }) => {
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">vulnerable</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              vulnerable
+            </p>
             <p className="text-2xl font-bold text-red-600">
               {threatenedNetworks}
             </p>
@@ -49,7 +55,9 @@ const ThreatSummary = ({ networks }) => {
       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Cpu Usage</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Cpu Usage
+            </p>
             <p className="text-2xl font-bold text-yellow-600">
               {totalCpuUsage}
             </p>
