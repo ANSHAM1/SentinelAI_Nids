@@ -45,7 +45,7 @@ SentinelAI **requires** Npcap to be installed on your system for packet capturin
 
 ### 2. Download SentinelAI
 
-1.  Go to the [**Latest Release Page**](https://github.com/ANSHAM1/SentinelAI/releases/latest).
+1.  Go to the [**Latest Release Page**](https://github.com/ANSHAM1/SentinelAI_Nids/releases/tag/v1.0.0).
 2.  Download the `.msi` (installer) file from the **Assets** section.
 
 ### 3. Run the Application
@@ -79,7 +79,7 @@ All analysis is performed locally using over 80+ engineered features extracted i
 ### Project Structure
 ## 🐛 Reporting Issues
 
-If you encounter any bugs or have suggestions for improvements, please [**open an issue**](https://github.com/ANSHAM1/SentinelAI/issues).
+If you encounter any bugs or have suggestions for improvements, please [**open an issue**](https://github.com/ANSHAM1/SentinelAI_Nids/issues).
 
 ## ❤️ Acknowledgements
 
