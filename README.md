@@ -1,10 +1,5 @@
 # 🛡️ SentinelAI — Real-Time Network Intrusion Detection System (NIDS)
 
-![Release](https://img.shields.io/github/v/release/ANSHAM1/SentinelAI?style=for-the-badge&label=Latest%20Release)
-![Downloads](https://img.shields.io/github/downloads/ANSHAM1/SentinelAI/total?style=for-the-badge&color=blue)
-![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=for-the-badge)
-![License](https://img.shields.io/github/license/ANSHAM1/SentinelAI?style=for-the-badge)
-
 <p align="center">
   <img src="assets/banner.png" alt="SentinelAI Banner" width="700"/>
 </p>
@@ -12,15 +7,6 @@
 **SentinelAI** is a modern, AI-powered Network Intrusion Detection System (NIDS) designed for real-time traffic monitoring and on-device anomaly detection.
 
 Built with **Rust, Tauri, NFStream, and Machine Learning models**, SentinelAI provides powerful, low-latency threat detection without sending any data outside the user's machine.
-
-## 📸 Screenshots
-
-*Replace the image files in the `assets/` folder with your own screenshots.*
-
-| Real-Time Dashboard | Live Traffic Analysis | Anomaly Detected Alert |
-| :---: | :---: | :---: |
-| ![SentinelAI Dashboard](assets/dashboard.png) | ![SentinelAI Live Traffic](assets/traffic.png) | ![SentinelAI Alert](assets/alert.png) |
-| *Main dashboard showing live stats.* | *Detailed view of active network flows.* | *Example of an alert when an anomaly is found.* |
 
 ---
 
