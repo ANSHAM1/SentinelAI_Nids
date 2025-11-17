@@ -1,9 +1,5 @@
 # 🛡️ SentinelAI — Real-Time Network Intrusion Detection System (NIDS)
 
-<p align="center">
-  <img src="assets/banner.png" alt="SentinelAI Banner" width="700"/>
-</p>
-
 **SentinelAI** is a modern, AI-powered Network Intrusion Detection System (NIDS) designed for real-time traffic monitoring and on-device anomaly detection.
 
 Built with **Rust, Tauri, NFStream, and Machine Learning models**, SentinelAI provides powerful, low-latency threat detection without sending any data outside the user's machine.
