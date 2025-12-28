@@ -77,6 +77,9 @@ All analysis is performed locally using over 80+ engineered features extracted i
 ---
 
 ### Project Structure
+
+![Alt text](./Architecture.png)
+
 ## 🐛 Reporting Issues
 
 If you encounter any bugs or have suggestions for improvements, please [**open an issue**](https://github.com/ANSHAM1/SentinelAI_Nids/issues).
